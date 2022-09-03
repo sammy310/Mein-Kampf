@@ -12,6 +12,7 @@ public class BlockHighlight : MonoBehaviour
     const int BlockIndicesSize = 24;
 
     public BlockPos BlockPos { get; private set; }
+    public bool IsEnabled { get; private set; }
 
     private void Awake()
     {
@@ -86,5 +87,11 @@ public class BlockHighlight : MonoBehaviour
     {
         this.BlockPos = blockPos;
         transform.position = blockPos.GetWorldPosition();
+    }
+
+    public void SetActive(bool value)
+    {
+        gameObject.SetActive(value);
+        IsEnabled = value;
     }
 }

@@ -74,4 +74,12 @@ public class WorldManager : MonoBehaviour
         }
         return false;
     }
+
+    public bool IsAnyPlayerInBlockPosition(BlockPos blockPos)
+    {
+        Bounds blockBounds = new Bounds(blockPos.GetWorldPosition() + Vector3.one * ChunkManager.BlockLength * 0.5f, new Vector3(ChunkManager.BlockLength, ChunkManager.BlockLength, ChunkManager.BlockLength));
+        Bounds playerBounds = new Bounds(PlayerController.transform.position, (new Vector3(PlayerController.PlayerWidth, PlayerController.PlayerHeight, PlayerController.PlayerWidth)) * PlayerController.PlayerDetectFactor);
+
+        return blockBounds.Intersects(playerBounds);
+    }
 }

@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    // Player Info
+    public const float PlayerWidth = 0.8f;
+    public const float PlayerHeight = 1.6f;
+    public const float PlayerDetectFactor = 0.95f;
+
     // Player Move
     [SerializeField] float PlayerSpeed = 1f;
 
@@ -30,11 +35,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] BlockHighlight BlockHighlightPrefab;
     BlockHighlight BlockHighlight = null;
 
+    BlockPos LookAtBlockPos = new BlockPos();
+
     // Click
-    public bool IsMouseClick { get; private set; } = false;
+    public bool IsMouseLeftClick { get; private set; } = false;
+    public bool IsMouseRightClick { get; private set; } = false;
 
     // Ground Check
-    const float GroundCheckTime = 1f;
+    const float GroundCheckTime = 0.5f;
     float groundCheckTime = 0f;
 
     // Components
@@ -63,20 +71,22 @@ public class PlayerController : MonoBehaviour
         CameraRotation();
         MouseClick();
 
+        QuickSlot();
+
         CheckGround();
     }
 
     private void LateUpdate()
     {
-        var blockPos = GetLookAtBlockBlockPosition();
-        if (blockPos.IsNull == false)
+        UpdateLookAtBlockPosition();
+        if (LookAtBlockPos.IsNull == false)
         {
-            BlockHighlight.SetPosition(blockPos);
-            BlockHighlight.gameObject.SetActive(true);
+            BlockHighlight.SetPosition(LookAtBlockPos);
+            BlockHighlight.SetActive(true);
         }
         else
         {
-            BlockHighlight.gameObject.SetActive(false);
+            BlockHighlight.SetActive(false);
         }
     }
 
@@ -101,6 +111,7 @@ public class PlayerController : MonoBehaviour
                 rigid.AddForce(new Vector3(0, PlayerJump, 0));
 
                 jumpCooltime = PlayerJumpCooltime;
+                groundCheckTime = 0f;
             }
         }
         else
@@ -134,31 +145,105 @@ public class PlayerController : MonoBehaviour
     private void MouseClick()
     {
         float fire1 = Input.GetAxis("Fire1");
-
         if (fire1 > 0)
         {
             // Mouse Down
-            if (IsMouseClick == false)
+            if (IsMouseLeftClick == false)
             {
-                WorldManager.Instance.ChunkManager.RemoveBlock(BlockHighlight.BlockPos);
+                if (BlockHighlight.IsEnabled)
+                {
+                    ItemType itemType = WorldManager.Instance.ChunkManager.RemoveBlock(BlockHighlight.BlockPos);
+                    Inventory.Instance.AddItem(itemType, 1);
+                }
             }
 
-            IsMouseClick = true;
+            IsMouseLeftClick = true;
         }
         else
         {
             // Mouse Up
-            if (IsMouseClick == true)
+            if (IsMouseLeftClick == true)
             {
 
             }
 
-            IsMouseClick = false;
+            IsMouseLeftClick = false;
+        }
+
+        float fire2 = Input.GetAxis("Fire2");
+        if (fire2 > 0)
+        {
+            // Mouse Down
+            if (IsMouseRightClick == false)
+            {
+                QuickSlotManager.Instance.UseCurrentItem();
+            }
+
+            IsMouseRightClick = true;
+        }
+        else
+        {
+            // Mouse Up
+            if (IsMouseRightClick == true)
+            {
+
+            }
+
+            IsMouseRightClick = false;
+        }
+    }
+
+    private void QuickSlot()
+    {
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(0);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(1);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha3))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(2);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha4))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(3);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha5))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(4);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha6))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(5);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha7))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(6);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha8))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(7);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha9))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(8);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha0))
+        {
+            QuickSlotManager.Instance.SetQuickSlotIndex(9);
         }
     }
 
     private void CheckGround()
     {
+        if (IsJump == false)
+        {
+            return;
+        }
+
         if (GroundCheckTime < groundCheckTime)
         {
             groundCheckTime = 0f;
@@ -172,9 +257,9 @@ public class PlayerController : MonoBehaviour
 
     private bool IsPlayerOnGround()
     {
-        Ray ray = new Ray(GroundDetectionTransform.position, Vector3.down);
+        Vector3 halfExtents = (new Vector3(PlayerWidth, PlayerHeight, PlayerWidth)) * 0.5f;
         int layerMask = 1 << WorldManager.Instance.ChunkManager.BlockLayerMask;
-        if (Physics.Raycast(ray, out var hit, GroundDetectionLength, layerMask))
+        if (Physics.BoxCast(transform.position, halfExtents, Vector3.down, out var hit, Quaternion.identity, GroundDetectionLength, layerMask))
         {
             return true;
         }
@@ -182,7 +267,7 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    public BlockPos GetLookAtBlockBlockPosition()
+    private void UpdateLookAtBlockPosition()
     {
         Ray ray = new Ray(cam.transform.position, cam.transform.forward);
         int layerMask = 1 << WorldManager.Instance.ChunkManager.BlockLayerMask;
@@ -190,6 +275,37 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 blockPosition = hit.point;
             blockPosition -= hit.normal * ChunkManager.BlockLength * 0.5f;
+
+            ChunkManager.GetBlockPosFromWorldPosition(blockPosition, ref LookAtBlockPos);
+            LookAtBlockPos.IsNull = false;
+        }
+        else
+        {
+            LookAtBlockPos.IsNull = true;
+        }
+    }
+    public BlockPos GetLookAtBlockPosition()
+    {
+        Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+        int layerMask = 1 << WorldManager.Instance.ChunkManager.BlockLayerMask;
+        if (Physics.Raycast(ray, out var hit, PlayerInteractLengthFactor, layerMask))
+        {
+            Vector3 blockPosition = hit.point;
+            blockPosition -= hit.normal * ChunkManager.BlockLength * 0.5f;
+
+            return ChunkManager.GetBlockPosFromWorldPosition(blockPosition);
+        }
+        return BlockPos.GetNull();
+    }
+
+    public BlockPos GetLookAtOppsiteBlockPosition()
+    {
+        Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+        int layerMask = 1 << WorldManager.Instance.ChunkManager.BlockLayerMask;
+        if (Physics.Raycast(ray, out var hit, PlayerInteractLengthFactor, layerMask))
+        {
+            Vector3 blockPosition = hit.point;
+            blockPosition += hit.normal * ChunkManager.BlockLength * 0.5f;
 
             return ChunkManager.GetBlockPosFromWorldPosition(blockPosition);
         }

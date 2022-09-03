@@ -4,11 +4,6 @@ using UnityEngine;
 
 public class Chunk : MonoBehaviour
 {
-    public enum BlockType
-    {
-        None, Air, Dirt,
-    }
-
     public ChunkPos ChunkPosition { get; private set; }
     public int ChunkX => ChunkPosition.X;
     public int ChunkZ => ChunkPosition.Z;
@@ -18,7 +13,7 @@ public class Chunk : MonoBehaviour
     MeshFilter meshFilter = null;
     MeshCollider meshCollider = null;
 
-    BlockType[,,] blocks = new BlockType[ChunkManager.ChunkWidth, ChunkManager.ChunkHeight, ChunkManager.ChunkWidth];
+    ItemType[,,] blocks = new ItemType[ChunkManager.ChunkWidth, ChunkManager.ChunkHeight, ChunkManager.ChunkWidth];
 
     private void Awake()
     {
@@ -64,11 +59,11 @@ public class Chunk : MonoBehaviour
                 {
                     if (airY < y)
                     {
-                        blocks[x, y, z] = BlockType.Air;
+                        blocks[x, y, z] = ItemType.Air;
                     }
                     else
                     {
-                        blocks[x, y, z] = BlockType.Dirt;
+                        blocks[x, y, z] = ItemType.Dirt;
                     }
                 }
             }
@@ -101,7 +96,7 @@ public class Chunk : MonoBehaviour
     private void BuildMeshFromBlock(int x, int y, int z, List<Vector3> vertices, List<int> triangles)
     {
         var blockType = blocks[x, y, z];
-        if (blockType == BlockType.Air)
+        if (blockType == ItemType.Air)
         {
             return;
         }
@@ -114,7 +109,7 @@ public class Chunk : MonoBehaviour
         // Up (Y == 1)
         {
             var block = GetBlockType(x, y + 1, z);
-            if (block == BlockType.Air)
+            if (block == ItemType.Air)
             {
                 int vertexIndex = vertices.Count;
                 vertices.Add(new Vector3(blockX, blockY + blockLength, blockZ));
@@ -133,7 +128,7 @@ public class Chunk : MonoBehaviour
         // Left (X == 0)
         {
             var block = GetBlockType(x - 1, y, z);
-            if (block == BlockType.Air)
+            if (block == ItemType.Air)
             {
                 int vertexIndex = vertices.Count;
                 vertices.Add(new Vector3(blockX, blockY, blockZ));
@@ -152,7 +147,7 @@ public class Chunk : MonoBehaviour
         // Right (X == 1)
         {
             var block = GetBlockType(x + 1, y, z);
-            if (block == BlockType.Air)
+            if (block == ItemType.Air)
             {
                 int vertexIndex = vertices.Count;
                 vertices.Add(new Vector3(blockX + blockLength, blockY, blockZ));
@@ -171,7 +166,7 @@ public class Chunk : MonoBehaviour
         // Front (Z == 1)
         {
             var block = GetBlockType(x, y, z + 1);
-            if (block == BlockType.Air)
+            if (block == ItemType.Air)
             {
                 int vertexIndex = vertices.Count;
                 vertices.Add(new Vector3(blockX, blockY, blockZ + blockLength));
@@ -190,7 +185,7 @@ public class Chunk : MonoBehaviour
         // Back (Z == 0)
         {
             var block = GetBlockType(x, y, z - 1);
-            if (block == BlockType.Air)
+            if (block == ItemType.Air)
             {
                 int vertexIndex = vertices.Count;
                 vertices.Add(new Vector3(blockX, blockY, blockZ));
@@ -215,11 +210,11 @@ public class Chunk : MonoBehaviour
     }
 
 
-    public BlockType GetBlockType(int x, int y, int z)
+    public ItemType GetBlockType(int x, int y, int z)
     {
         if (ChunkManager.ChunkHeight <= y)
         {
-            return BlockType.Air;
+            return ItemType.Air;
         }
 
         if (x < 0)
@@ -240,54 +235,60 @@ public class Chunk : MonoBehaviour
         }
         if (y < 0)
         {
-            return BlockType.None;
+            return ItemType.None;
         }
 
         return blocks[x, y, z];
     }
 
-    public BlockType RemoveBlock(int x, int y, int z)
+    public void SetBlock(int x, int y, int z, ItemType itemType)
     {
-        BlockType blockType = blocks[x, y, z];
-        blocks[x, y, z] = BlockType.Air;
+        blocks[x, y, z] = itemType;
+
+        BuildMesh();
+    }
+
+    public ItemType RemoveBlock(int x, int y, int z)
+    {
+        ItemType blockType = blocks[x, y, z];
+        blocks[x, y, z] = ItemType.Air;
 
         BuildMesh();
 
-        if (GetClosedChunk(x, y, z, out var chunkPos))
-        {
-            WorldManager.Instance.ChunkManager.GetChunk(chunkPos).BuildMesh();
-        }
+        UpdateClosedChunk(x, y, z);
 
         return blockType;
     }
 
-    public bool GetClosedChunk(int x, int y, int z, out ChunkPos chunkPos)
+    public void UpdateClosedChunk(int x, int y, int z)
     {
         int edgeWidth = ChunkManager.ChunkWidth - 1;
-        chunkPos = new ChunkPos(ChunkPosition);
+        ChunkPos chunkPos = new ChunkPos(ChunkPosition);
 
         if (x == 0)
         {
             chunkPos.X--;
-            return true;
+            WorldManager.Instance.ChunkManager.GetChunk(chunkPos).BuildMesh();
+            chunkPos.X++;
         }
         if (z == 0)
         {
             chunkPos.Z--;
-            return true;
+            WorldManager.Instance.ChunkManager.GetChunk(chunkPos).BuildMesh();
+            chunkPos.Z++;
         }
         if (x == edgeWidth)
         {
             chunkPos.X++;
-            return true;
+            WorldManager.Instance.ChunkManager.GetChunk(chunkPos).BuildMesh();
+            chunkPos.X--;
         }
         if (z == edgeWidth)
         {
             chunkPos.Z++;
-            return true;
+            WorldManager.Instance.ChunkManager.GetChunk(chunkPos).BuildMesh();
+            chunkPos.Z--;
         }
-
-        return false;
     }
 
 

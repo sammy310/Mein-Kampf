@@ -22,7 +22,8 @@ public struct ChunkPos
 
 public struct BlockPos
 {
-    public ChunkPos ChunkPos { get; set; }
+    private ChunkPos chunkPos;
+    public ChunkPos ChunkPos => chunkPos;
 
     public int X { get; set; }
     public int Y { get; set; }
@@ -32,7 +33,7 @@ public struct BlockPos
     
     public BlockPos(ChunkPos chunkPos, int x, int y, int z)
     {
-        this.ChunkPos = new ChunkPos(chunkPos);
+        this.chunkPos = new ChunkPos(chunkPos);
         X = x;
         Y = y;
         Z = z;
@@ -40,10 +41,23 @@ public struct BlockPos
         IsNull = false;
     }
 
+    public void SetChunkPos(int x, int z)
+    {
+        chunkPos.X = x;
+        chunkPos.Z = z;
+    }
+
+    public void SetBlockPos(int x, int y, int z)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+    }
+
     public Vector3 GetWorldPosition()
     {
-        int x = this.ChunkPos.X * ChunkManager.ChunkWidth + X;
-        int z = this.ChunkPos.Z * ChunkManager.ChunkWidth + Z;
+        int x = this.chunkPos.X * ChunkManager.ChunkWidth + X;
+        int z = this.chunkPos.Z * ChunkManager.ChunkWidth + Z;
         return (new Vector3(x, Y, z)) * ChunkManager.BlockLength;
     }
 
@@ -120,23 +134,28 @@ public class ChunkManager : MonoBehaviour
     }
 
 
-    public Chunk.BlockType GetBlockType(ChunkPos chunkPos, int x, int y, int z)
+    public ItemType GetBlockType(ChunkPos chunkPos, int x, int y, int z)
     {
         var chunk = GetChunk(chunkPos);
         if (chunk == null)
         {
-            return Chunk.BlockType.None;
+            return ItemType.None;
         }
 
         return chunk.GetBlockType(x, y, z);
     }
 
-    public Chunk.BlockType RemoveBlock(BlockPos blockPos)
+    public void SetBlock(BlockPos blockPos, ItemType itemType)
+    {
+        GetChunk(blockPos.ChunkPos).SetBlock(blockPos.X, blockPos.Y, blockPos.Z, itemType);
+    }
+
+    public ItemType RemoveBlock(BlockPos blockPos)
     {
         var chunk = GetChunk(blockPos.ChunkPos);
         if (chunk == null)
         {
-            return Chunk.BlockType.None;
+            return ItemType.None;
         }
 
         return chunk.RemoveBlock(blockPos.X, blockPos.Y, blockPos.Z);
@@ -152,5 +171,16 @@ public class ChunkManager : MonoBehaviour
         
         ChunkPos chunkPos = new ChunkPos(x / ChunkManager.ChunkWidth, z / ChunkManager.ChunkWidth);
         return new BlockPos(chunkPos, x % ChunkManager.ChunkWidth, y % ChunkManager.ChunkHeight, z % ChunkManager.ChunkWidth);
+    }
+
+    public static void GetBlockPosFromWorldPosition(Vector3 worldPosition, ref BlockPos blockPos)
+    {
+        worldPosition /= ChunkManager.BlockLength;
+        int x = Mathf.FloorToInt(worldPosition.x);
+        int y = Mathf.FloorToInt(worldPosition.y);
+        int z = Mathf.FloorToInt(worldPosition.z);
+
+        blockPos.SetChunkPos(x / ChunkManager.ChunkWidth, z / ChunkManager.ChunkWidth);
+        blockPos.SetBlockPos(x % ChunkManager.ChunkWidth, y % ChunkManager.ChunkHeight, z % ChunkManager.ChunkWidth);
     }
 }
